@@ -2,14 +2,26 @@ class EventsController < ApplicationController
 
   before_action :require_signin, except: [:index, :show]
   before_action :require_admin, except: [:index, :show]
+  before_action :set_event, only: [:show, :edit, :update, :destroy]
 
   def index
-    @events = Event.all #upcoming
+    # fail
+    case params[:filter]
+    when "past"
+      @events = Event.past # calling past scope
+    when "free"
+      @events = Event.free # calling free scope
+    when "recent"
+      @events = Event.recent # calling recent scope
+    else
+      @events = Event.upcoming # calling recent scope
+    end
   end
 
   def show
-    @event = Event.find(params[:id])
+    # @event = Event.find(params[:id])
     @likers = @event.likers
+    @categories = @event.categories
 
     if current_user
       @like = current_user.likes.find_by(event_id: @event.id)
@@ -17,12 +29,10 @@ class EventsController < ApplicationController
   end
 
   def edit
-    @event = Event.find(params[:id])
   end
 
   def update
     # fail
-    @event = Event.find(params[:id])
     
     if @event.update(event_params)
       # flash[:notice] = "Event successfully updated!"
@@ -46,15 +56,18 @@ class EventsController < ApplicationController
   end
 
   def destroy
-    @event = Event.find(params[:id])
     @event.destroy
     redirect_to events_url
   end
 
 private
 
+  def set_event
+    @event = Event.find_by!(slug: params[:id])
+  end
+
   def event_params
       params.require(:event).
-        permit(:name, :description, :location, :price, :starts_at, :capacity, :image_file_name)
+        permit(:name, :description, :location, :price, :starts_at, :capacity, :image_file_name, category_ids: [])
   end
 end

@@ -1,11 +1,17 @@
 class Event < ApplicationRecord
 
+  before_save :set_slug
+
   has_many :registrations, dependent: :destroy # for accessing registrations from specific event
-  has_many :likes, dependent: :destroy
   # through associations
+  has_many :likes, dependent: :destroy
   has_many :likers, through: :likes, source: :user
 
-  validates :name, :location, presence: true
+  has_many :categorizations, dependent: :destroy
+  has_many :categories, through: :categorizations
+
+  validates :name, presence: true, uniqueness: true
+  validates :location, presence: true
 
   validates :description, length: {minimum: 25 }
 
@@ -15,9 +21,14 @@ class Event < ApplicationRecord
 
   validates :image_file_name, format: { with: /\w+\.(jpg|png)\z/i, message: "must be a JPG or PNG image"}
 
-  def self.upcoming
-    where("starts_at > ?", Time.now).order("starts_at desc")
-  end
+  scope :past, -> {where("starts_at < ?", Time.now).order("starts_at")}
+  scope :upcoming, -> {where("starts_at > ?", Time.now).order("starts_at")}
+  scope :free, -> { upcoming.where(price: 0.0).order(:name)}
+  scope :recent, ->(max=3) { past.limit(max) }
+
+  # def self.upcoming
+  #   where("starts_at > ?", Time.now).order("starts_at") #desc
+  # end
 
   def free?
     price.blank? || price.zero?
@@ -25,6 +36,15 @@ class Event < ApplicationRecord
 
   def sould_out?
     (capacity - registrations.size).zero?
+  end
+
+  def to_param
+    name.parameterize
+  end
+
+private
+  def set_slug
+    self.slug = name.parameterize
   end
 
 end
@@ -72,3 +92,15 @@ end
 
 # rails g migration AddAdminToUsers admin:boolean
 # rails g resource like event:references user:references
+# rails g resource category name:string
+# rails g model categorization event:references cataegory:references
+# rails g migration AddSlugToEvents slug
+
+# checkboxes
+# scopes
+# collable object lambda{} or ->
+# - return pro object and defines custom queries
+# slug
+# model callback
+
+
